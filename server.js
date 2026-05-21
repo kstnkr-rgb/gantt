@@ -26,6 +26,8 @@ function auth(req, res, next) {
 
 app.get('/health', (_, res) => res.json({ ok: true }));
 
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'gantt.html')));
+
 app.get('/api/data', auth, (req, res) => {
   try {
     if (!fs.existsSync(DATA_PATH)) return res.json(null);
