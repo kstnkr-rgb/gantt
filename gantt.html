@@ -412,7 +412,7 @@ let S={projectName:'New project',groups:[],tasks:[],globalTags:[],activeTags:[],
 // ── CLOUD SYNC CONFIG ──
 const CLOUD_URL='https://gantt-production-3714.up.railway.app';
 const CLOUD_KEY=''; // Optional: must match GANTT_SECRET env var on the server
-let _cloudSaveTimer=null,_skipCloudSave=false;
+let _cloudSaveTimer=null,_skipCloudSave=false,_seedLoaded=false;
 
 // ══════════════════════════════
 //  UTILS
@@ -1195,13 +1195,14 @@ function cloudLoad(){
     if(!data||!data.state){setCloudStatus('idle');return;}
     const lsRaw=localStorage.getItem(LS_KEY);
     const lsTs=lsRaw?(JSON.parse(lsRaw).savedAt||''):'';
-    if(!lsTs||!data.savedAt||new Date(data.savedAt)>new Date(lsTs)){
+    if(_seedLoaded||!lsTs||!data.savedAt||new Date(data.savedAt)>new Date(lsTs)){
       _skipCloudSave=true;
       Object.assign(S,data.state);
       if(data.zoom){zoom=data.zoom;['day','week','month','quarter'].forEach(k=>document.getElementById('z'+k[0]).classList.toggle('zactive',k===zoom));}
       if(data.viewStart){viewStart=parseDate(data.viewStart);normalise();}
       render();
       _skipCloudSave=false;
+      _seedLoaded=false;
     }
     setCloudStatus('saved');
   })
@@ -1259,7 +1260,7 @@ function loadState(){
 // BOOT
 (()=>{
   const loaded=loadState();
-  if(!loaded){seed();viewStart=new Date(TODAY);normalise();}
+  if(!loaded){seed();viewStart=new Date(TODAY);normalise();_seedLoaded=true;}
   setZoom(zoom);
   cloudLoad();
   let _sync=false;
