@@ -289,6 +289,7 @@
       <div class="field"><label>Progress %</label><input id="tp" type="range" min="0" max="100" value="0"/></div>
     </div>
     <div class="field"><label>Group</label><select id="tg"></select></div>
+    <div class="field" id="tpar-field"><label>Parent task</label><select id="tpar"></select></div>
     <div class="mactions">
       <button class="btn danger" id="mtask-del" onclick="deleteEditTask()" style="display:none;margin-right:auto">Delete</button>
       <button class="btn" onclick="cm('mtask')">Cancel</button>
@@ -733,7 +734,7 @@ function addSubtask(parentId){
   document.getElementById('tc').value=nt.color||'#5b6af0';
   document.getElementById('tp').value=0;
   document.getElementById('mtask-del').style.display='';
-  popGrp(nt.groupId||'');om('mtask');
+  popGrp(nt.groupId||'');popParent(id,parentId);om('mtask');
 }
 
 // ══════════════════════════════
@@ -747,7 +748,7 @@ function addTaskToGroup(groupId){
   document.getElementById('te').value=fmtDate(addDays(TODAY,7));
   document.getElementById('tc').value='#5b6af0';
   document.getElementById('tp').value=0;
-  popGrp(groupId);om('mtask');
+  popGrp(groupId);popParent(null,'');om('mtask');
 }
 
 // ══════════════════════════════
@@ -843,11 +844,19 @@ function saveDefaults(){
 document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.add('hidden');}));
 
 // TASK
-function openAddTask(){editId=null;document.getElementById('mtask-title').textContent='New task';document.getElementById('tn').value='';document.getElementById('ts').value=fmtDate(TODAY);document.getElementById('te').value=fmtDate(addDays(TODAY,7));document.getElementById('tc').value='#5b6af0';document.getElementById('tp').value=0;popGrp('');document.getElementById('mtask-del').style.display='none';om('mtask');}
-function openEdit(id){const t=S.tasks.find(x=>x.id===id);if(!t)return;editId=id;document.getElementById('mtask-title').textContent='Edit task';document.getElementById('tn').value=t.name;document.getElementById('ts').value=t.start;document.getElementById('te').value=t.end;document.getElementById('tc').value=t.color||'#5b6af0';document.getElementById('tp').value=t.progress||0;popGrp(t.groupId||'');document.getElementById('mtask-del').style.display='';om('mtask');}
+function openAddTask(){editId=null;document.getElementById('mtask-title').textContent='New task';document.getElementById('tn').value='';document.getElementById('ts').value=fmtDate(TODAY);document.getElementById('te').value=fmtDate(addDays(TODAY,7));document.getElementById('tc').value='#5b6af0';document.getElementById('tp').value=0;popGrp('');popParent(null,'');document.getElementById('mtask-del').style.display='none';om('mtask');}
+function openEdit(id){const t=S.tasks.find(x=>x.id===id);if(!t)return;editId=id;document.getElementById('mtask-title').textContent='Edit task';document.getElementById('tn').value=t.name;document.getElementById('ts').value=t.start;document.getElementById('te').value=t.end;document.getElementById('tc').value=t.color||'#5b6af0';document.getElementById('tp').value=t.progress||0;popGrp(t.groupId||'');popParent(id,t.parentId||'');document.getElementById('mtask-del').style.display='';om('mtask');}
 function deleteEditTask(){if(!editId)return;saveUndo();S.tasks=S.tasks.filter(t=>t.id!==editId&&t.parentId!==editId);cm('mtask');editId=null;render();toast('Task deleted');}
 function popGrp(sel){const s=document.getElementById('tg');s.innerHTML='<option value="">— no group —</option>';S.groups.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name;if(g.id===sel)o.selected=true;s.appendChild(o);});}
-function saveTask(){const n=document.getElementById('tn').value.trim();if(!n){toast('Enter a name');return;}const s=document.getElementById('ts').value,e=document.getElementById('te').value;if(e<s){toast('End date is before start date');return;}saveUndo();const d={name:n,start:s,end:e,color:document.getElementById('tc').value,progress:parseInt(document.getElementById('tp').value)||0,groupId:document.getElementById('tg').value||null};if(editId){const existing=S.tasks.find(x=>x.id===editId);const delta=daysBetween(parseDate(existing.start),parseDate(s));Object.assign(existing,d);if(delta!==0)S.tasks.filter(t=>t.parentId===editId).forEach(sub=>{sub.start=fmtDate(addDays(parseDate(sub.start),delta));sub.end=fmtDate(addDays(parseDate(sub.end),delta));});}else{S.tasks.push({id:uid(),tags:[],fontStyle:null,...d});}cm('mtask');render();toast('Saved');}
+function popParent(editingId,sel){
+  const f=document.getElementById('tpar-field'),s=document.getElementById('tpar');
+  const hasKids=editingId&&S.tasks.some(t=>t.parentId===editingId);
+  f.style.display=hasKids?'none':'';
+  s.innerHTML='<option value="">— no parent —</option>';
+  S.tasks.filter(t=>!t.parentId&&t.id!==editingId).forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;if(t.id===sel)o.selected=true;s.appendChild(o);});
+  s.onchange=()=>{const pid=s.value;if(pid){const par=S.tasks.find(t=>t.id===pid);if(par)document.getElementById('tg').value=par.groupId||'';}};
+}
+function saveTask(){const n=document.getElementById('tn').value.trim();if(!n){toast('Enter a name');return;}const s=document.getElementById('ts').value,e=document.getElementById('te').value;if(e<s){toast('End date is before start date');return;}saveUndo();const newParentId=document.getElementById('tpar').value||null;const d={name:n,start:s,end:e,color:document.getElementById('tc').value,progress:parseInt(document.getElementById('tp').value)||0,groupId:document.getElementById('tg').value||null,parentId:newParentId};if(newParentId){const par=S.tasks.find(t=>t.id===newParentId);if(par)d.groupId=par.groupId||null;}if(editId){const existing=S.tasks.find(x=>x.id===editId);const delta=daysBetween(parseDate(existing.start),parseDate(s));Object.assign(existing,d);if(delta!==0)S.tasks.filter(t=>t.parentId===editId).forEach(sub=>{sub.start=fmtDate(addDays(parseDate(sub.start),delta));sub.end=fmtDate(addDays(parseDate(sub.end),delta));});}else{S.tasks.push({id:uid(),tags:[],fontStyle:null,...d});}cm('mtask');render();toast('Saved');}
 function quickAdd(e){if(e.key!=='Enter')return;const i=document.getElementById('qa'),n=i.value.trim();if(!n)return;saveUndo();S.tasks.push({id:uid(),name:n,tags:[],fontStyle:null,start:fmtDate(TODAY),end:fmtDate(addDays(TODAY,7)),color:'#5b6af0',progress:0,groupId:null});i.value='';render();toast('Task added');}
 
 // GROUP
