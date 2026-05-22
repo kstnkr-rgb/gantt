@@ -1193,17 +1193,13 @@ function cloudLoad(){
   .then(r=>r.ok?r.json():null)
   .then(data=>{
     if(!data||!data.state){setCloudStatus('idle');return;}
-    const lsRaw=localStorage.getItem(LS_KEY);
-    const lsTs=lsRaw?(JSON.parse(lsRaw).savedAt||''):'';
-    if(_seedLoaded||!lsTs||!data.savedAt||new Date(data.savedAt)>new Date(lsTs)){
-      _skipCloudSave=true;
-      Object.assign(S,data.state);
-      if(data.zoom){zoom=data.zoom;['day','week','month','quarter'].forEach(k=>document.getElementById('z'+k[0]).classList.toggle('zactive',k===zoom));}
-      if(data.viewStart){viewStart=parseDate(data.viewStart);normalise();}
-      render();
-      _skipCloudSave=false;
-      _seedLoaded=false;
-    }
+    _skipCloudSave=true;
+    Object.assign(S,data.state);
+    if(data.zoom){zoom=data.zoom;['day','week','month','quarter'].forEach(k=>document.getElementById('z'+k[0]).classList.toggle('zactive',k===zoom));}
+    if(data.viewStart){viewStart=parseDate(data.viewStart);normalise();}
+    render();
+    _skipCloudSave=false;
+    _seedLoaded=false;
     setCloudStatus('saved');
   })
   .catch(()=>setCloudStatus('error'));
